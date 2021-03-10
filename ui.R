@@ -40,9 +40,11 @@ shinyUI(fluidPage(
     ), 
     fluidRow(
         column(6, selectInput("facility", "Facility", 
+                              selected = NULL, 
                               choices = read_fac_info() %>% 
                                   filter(State == "California") %>% 
-                                  filter(Jurisdiction == "state") %>% 
+                                  mutate(Name = stringr::str_c(
+                                      stringr::str_to_upper(State), " - ", Name)) %>% 
                                   select(Name), 
                               width = "100%")),
         column(3, selectInput("metric", 

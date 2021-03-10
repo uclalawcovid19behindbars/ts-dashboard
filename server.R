@@ -10,6 +10,8 @@ shinyServer(function(input, output) {
     
     withProgress(message = "Loading Data...", style = "old", {
         scrape_ca <- read_scrape_data(all_dates = TRUE, state = "California") %>%
+            mutate(Name = stringr::str_c(
+                stringr::str_to_upper(State), " - ", Name)) %>% 
             mutate(Residents.Confirmed.Rate = Residents.Confirmed / Residents.Population,
                    Residents.Deaths.Rate = Residents.Deaths / Residents.Population,
                    Residents.Active.Rate = Residents.Active / Residents.Population,
@@ -24,34 +26,43 @@ getPlot <- function(df, fac_name, metric, population){
     
     variable <- getMetric(metric, population)
     
-    if (str_ends(variable, ".Rate")){
-        plt <- df %>% 
-            filter(!is.na(!!sym(variable))) %>%
-            filter(Name == fac_name) %>%
-            ggplot(aes(x = Date, y = !!sym(variable), group = 1, 
-                       text = sprintf("Date: %s<br>%s: %s", 
-                                      Date, 
-                                      metric, 
-                                      percent(!!sym(variable), accuracy = 0.1)))) +
-            geom_line(size = 1, color = "#D7790F") +
-            labs(title = str_c(metric, " Among ", population, "\n", fac_name)) + 
-            scale_x_date(date_labels = "%b %Y") + 
-            scale_y_continuous(labels = percent_format(accuracy = 0.1)) + 
-            customTheme
+    if (is.na(variable)){
+        plt <- getBlankPlot(df, fac_name, metric, population)
+        
     } else {
-        plt <- df %>% 
+        filtered_df <- df %>% 
             filter(!is.na(!!sym(variable))) %>%
-            filter(Name == fac_name) %>%
-            ggplot(aes(x = Date, y = !!sym(variable), group = 1, 
-                       text = sprintf("Date: %s<br>%s: %s", 
-                                      Date, 
-                                      metric, 
-                                      comma(!!sym(variable), accuracy = 1)))) +
-            geom_line(size = 1, color = "#D7790F") +
-            labs(title =  str_c(metric, " Among ", population, "\n", fac_name)) + 
-            scale_x_date(date_labels = "%b %Y") + 
-            scale_y_continuous(labels = comma_format(accuracy = 1)) + 
-            customTheme
+            filter(Name == fac_name)
+        
+        if (nrow(filtered_df) == 0){
+            plt <- getBlankPlot(df, fac_name, metric, population)
+            
+        } else if (str_ends(variable, ".Rate")){
+            plt <- filtered_df %>%
+                ggplot(aes(x = Date, y = !!sym(variable), group = 1, 
+                           text = sprintf("Date: %s<br>%s: %s", 
+                                          Date, 
+                                          metric, 
+                                          percent(!!sym(variable), accuracy = 0.1)))) +
+                geom_line(size = 1, color = "#D7790F") +
+                labs(title = str_c(metric, " Among ", population, "\n", fac_name)) + 
+                scale_x_date(date_labels = "%b %Y") + 
+                scale_y_continuous(labels = percent_format(accuracy = 0.1)) + 
+                customTheme
+            
+        } else {
+            plt <- filtered_df %>%
+                ggplot(aes(x = Date, y = !!sym(variable), group = 1, 
+                           text = sprintf("Date: %s<br>%s: %s", 
+                                          Date, 
+                                          metric, 
+                                          comma(!!sym(variable), accuracy = 1)))) +
+                geom_line(size = 1, color = "#D7790F") +
+                labs(title =  str_c(metric, " Among ", population, "\n", fac_name)) + 
+                scale_x_date(date_labels = "%b %Y") + 
+                scale_y_continuous(labels = comma_format(accuracy = 1)) + 
+                customTheme
+        }
     }
     
     font <- list(
@@ -70,6 +81,14 @@ getPlot <- function(df, fac_name, metric, population){
               style(hoverlabel = label) %>%
               layout(font = font)
     )
+}
+
+getBlankPlot <- function(df, fac_name, metric, population){
+    df %>% 
+        ggplot(aes(x = Date)) +
+        labs(title = str_c(metric, " Among ", population, "\n", fac_name)) +
+        scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2020-03-01"), Sys.Date())) + 
+        customTheme
 }
 
 getMetric <- function(metric, population){
