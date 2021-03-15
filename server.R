@@ -9,28 +9,47 @@ library(stringr)
 shinyServer(function(input, output) {
     
     withProgress(message = "Loading Data...", style = "old", {
-        scrape_ca <- read_scrape_data(all_dates = TRUE, state = "California") %>%
-            mutate(Name = stringr::str_c(
-                stringr::str_to_upper(State), " - ", Name)) %>% 
-            mutate(Residents.Confirmed.Rate = Residents.Confirmed / Residents.Population,
+        scrape <- readr::read_csv("http://104.131.72.50:3838/scraper_data/summary_data/scraped_time_series.csv") %>% 
+            mutate(Date = lubridate::ymd(Date)) %>% 
+            mutate(Residents.Population = coalesce(Residents.Population, Population.Feb20), 
+                   Residents.Confirmed.Rate = Residents.Confirmed / Residents.Population,
                    Residents.Deaths.Rate = Residents.Deaths / Residents.Population,
                    Residents.Active.Rate = Residents.Active / Residents.Population,
                    Residents.Tadmin.Rate = Residents.Tadmin / Residents.Population)
     })
     
+    output$facility <- renderUI({
+        selectizeInput("facility", "Facility", 
+                       choices = c("Select Facility", 
+                           read_fac_info() %>%
+                           filter(State == input$state) %>% 
+                           select(Name) %>%
+                           unlist(use.names = FALSE)), 
+                       width = "100%")
+    })
+    
     output$plot <- renderPlotly(
-        {getPlot(scrape_ca, input$facility, input$metric, input$population)})
+        {getPlot(scrape, input$facility, input$state, input$metric, input$population)})
 })
 
-getPlot <- function(df, fac_name, metric, population){
+getPlot <- function(df, fac_name, state, metric, population){
     
     variable <- getMetric(metric, population)
     
-    if (is.na(variable)){
+    if (length(fac_name) == 0) {
+        plt <- getBlankPlot(df, fac_name, metric, population)
+    }
+    
+    else if (fac_name == "Select Facility") {
+        plt <- getBlankPlot(df, "", metric, population)
+    }
+    
+    else if (is.na(variable)){
         plt <- getBlankPlot(df, fac_name, metric, population)
         
     } else {
         filtered_df <- df %>% 
+            filter(State == state) %>% 
             filter(!is.na(!!sym(variable))) %>%
             filter(Name == fac_name)
         
@@ -124,7 +143,7 @@ customTheme <-
     theme(axis.title.y = element_blank(), 
           axis.title.x = element_blank(), 
           plot.title = element_text(hjust = 0.5), 
-          panel.grid.major.y =  element_line(),
+          panel.grid.major.y = element_line(),
           axis.line.y = element_blank(),
           axis.ticks.y = element_blank()
     )

@@ -12,6 +12,7 @@ METRICS <- c(
     "Active Case Rate", 
     "Tests Administered", 
     "Testing Rate", 
+    "Individuals Tested", 
     "Population"
 )
 
@@ -19,6 +20,12 @@ POPULATIONS <- c(
     "Incarcerated People", 
     "Staff"
 )
+
+STATES <- read_fac_info() %>% 
+    select(State) %>%
+    arrange(State) %>% 
+    distinct() %>% 
+    unlist(use.names = FALSE)
 
 shinyUI(fluidPage(
     
@@ -39,20 +46,14 @@ shinyUI(fluidPage(
                      align = "center"))
     ), 
     fluidRow(
-        column(6, selectInput("facility", "Facility", 
-                              selected = NULL, 
-                              choices = read_fac_info() %>% 
-                                  filter(State == "California") %>% 
-                                  mutate(Name = stringr::str_c(
-                                      stringr::str_to_upper(State), " - ", Name)) %>% 
-                                  select(Name), 
+        column(2, selectizeInput("state", "State", 
+                              choices = STATES, 
                               width = "100%")),
-        column(3, selectInput("metric", 
-                              "Metric", 
+        column(6, uiOutput("facility")), 
+        column(2, selectizeInput("metric", "Metric", 
                               choices = METRICS, 
                               width = "100%")), 
-        column(3, selectInput("population", 
-                              "Population", 
+        column(2, selectizeInput("population", "Population", 
                               choices = POPULATIONS, 
                               width = "100%"))
     ), 
