@@ -25,11 +25,6 @@ STATES <- datasets::state.name
 
 shinyUI(fluidPage(
     
-    theme = bs_theme(
-        base_font = "Helvetica", 
-        primary = "#D7790F"
-    ), 
-    
     tags$style(type = "text/css", ".selectize-input {font-size: 14px;} .selectize-dropdown {font-size: 14px}"),
 
     titlePanel(
