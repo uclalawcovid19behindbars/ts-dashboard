@@ -9,8 +9,18 @@ library(stringr)
 shinyServer(function(input, output) {
     
     withProgress(message = "Loading Data...", style = "old", {
-        scrape <- readr::read_csv("http://104.131.72.50:3838/scraper_data/summary_data/scraped_time_series.csv") %>% 
-            mutate(Date = lubridate::ymd(Date)) %>% 
+        
+        # Specify column types 
+        remote_loc <- "http://104.131.72.50:3838/scraper_data/summary_data/scraped_time_series.csv"
+        jnk <- read.csv(remote_loc, nrows=1, check.names=FALSE)
+        ctypes <- rep("c", ncol(jnk))
+        names(ctypes) <- names(jnk)
+        ctypes[stringr::str_starts(names(ctypes), "Residents|Staff")] <- "d"
+        ctypes[names(ctypes) == "Population.Feb20"] <- "d"
+        ctypes[names(ctypes) == "Date"] <- "D"
+        
+        scrape <- remote_loc %>% 
+            readr::read_csv(col_types = paste0(ctypes, collapse = "")) %>%
             mutate(Residents.Population = coalesce(Residents.Population, Population.Feb20), 
                    Residents.Confirmed.Rate = Residents.Confirmed / Residents.Population,
                    Residents.Deaths.Rate = Residents.Deaths / Residents.Population,
@@ -125,7 +135,8 @@ getMetric <- function(metric, population){
     
     lookup_staff <- c(
         "Cumulative Cases" = "Staff.Confirmed", 
-        "Cumulative Deaths" = "Staff.Deaths"
+        "Cumulative Deaths" = "Staff.Deaths", 
+        "Active Cases" = "Staff.Active"
     )
         
     if (population == "Incarcerated People"){

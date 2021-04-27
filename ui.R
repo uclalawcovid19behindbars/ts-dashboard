@@ -21,11 +21,7 @@ POPULATIONS <- c(
     "Staff"
 )
 
-STATES <- read_fac_info() %>% 
-    select(State) %>%
-    arrange(State) %>% 
-    distinct() %>% 
-    unlist(use.names = FALSE)
+STATES <- datasets::state.name
 
 shinyUI(fluidPage(
     
