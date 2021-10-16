@@ -10,17 +10,14 @@ shinyServer(function(input, output) {
     
     withProgress(message = "Loading Data...", style = "old", {
         
-        # Specify column types 
-        remote_loc <- "http://104.131.72.50:3838/scraper_data/summary_data/scraped_time_series.csv"
-        jnk <- read.csv(remote_loc, nrows=1, check.names=FALSE)
-        ctypes <- rep("c", ncol(jnk))
-        names(ctypes) <- names(jnk)
-        ctypes[stringr::str_starts(names(ctypes), "Residents|Staff")] <- "d"
-        ctypes[names(ctypes) == "Population.Feb20"] <- "d"
-        ctypes[names(ctypes) == "Date"] <- "D"
+        remote_facility_loc <- paste0(
+            "https://raw.githubusercontent.com/uclalawcovid19behindbars/data/", 
+            "master/historical-data/historical_facility_counts.csv")
+        facility_ctypes <- parseCols(remote_facility_loc)
+        facility_dat <- remote_facility_loc %>% 
+            readr::read_csv(col_types = paste0(facility_ctypes, collapse = ""))
         
-        scrape <- remote_loc %>% 
-            readr::read_csv(col_types = paste0(ctypes, collapse = "")) %>%
+        scrape <- facility_dat %>% 
             mutate(Residents.Population = coalesce(Residents.Population, Population.Feb20), 
                    Residents.Confirmed.Rate = Residents.Confirmed / Residents.Population,
                    Residents.Deaths.Rate = Residents.Deaths / Residents.Population,
@@ -29,18 +26,32 @@ shinyServer(function(input, output) {
     })
     
     output$facility <- renderUI({
-        selectizeInput("facility", "Facility", 
-                       choices = c("Select Facility", 
-                           read_fac_info() %>%
-                           filter(State == input$state) %>% 
-                           select(Name) %>%
-                           unlist(use.names = FALSE)), 
-                       width = "100%")
+        selectizeInput(
+            "facility", "Facility", 
+            choices = c(
+                "Select Facility", 
+                read_fac_info() %>%
+                    filter(State == input$state) %>% 
+                    select(Name) %>%
+                    filter(!(stringr::str_detect(Name, "(?i)state|county") & stringr::str_detect(Name, "(?i)wide"))) %>% 
+                    unlist(use.names = FALSE)), 
+            width = "100%")
     })
     
     output$plot <- renderPlotly(
         {getPlot(scrape, input$facility, input$state, input$metric, input$population)})
 })
+
+parseCols <- function(path){
+    jnk <- read.csv(path, nrows=1, check.names=FALSE)
+    ctypes <- rep("c", ncol(jnk))
+    names(ctypes) <- names(jnk)
+    ctypes[stringr::str_starts(names(ctypes), "Residents|Staff")] <- "d"
+    ctypes[names(ctypes) == "Population.Feb20"] <- "d"
+    ctypes[names(ctypes) == "Date"] <- "D"
+    
+    return(ctypes)
+}
 
 getPlot <- function(df, fac_name, state, metric, population){
     
