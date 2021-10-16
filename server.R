@@ -86,7 +86,6 @@ getPlot <- function(df, fac_name, state, metric, population){
                                           percent(!!sym(variable), accuracy = 0.1)))) +
                 geom_line(size = 1, color = "#D7790F") +
                 labs(title = str_c(metric, " Among ", population, "\n", fac_name)) + 
-                scale_x_date(date_labels = "%b %Y") + 
                 scale_y_continuous(labels = percent_format(accuracy = 0.1)) + 
                 customTheme
             
@@ -99,10 +98,13 @@ getPlot <- function(df, fac_name, state, metric, population){
                                           comma(!!sym(variable), accuracy = 1)))) +
                 geom_line(size = 1, color = "#D7790F") +
                 labs(title =  str_c(metric, " Among ", population, "\n", fac_name)) + 
-                scale_x_date(date_labels = "%b %Y") + 
                 scale_y_continuous(labels = comma_format(accuracy = 1)) + 
                 customTheme
         }
+        
+        plt <- plt + 
+            scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2020-03-01"), Sys.Date())) 
+            
     }
     
     font <- list(
@@ -127,7 +129,6 @@ getBlankPlot <- function(df, fac_name, metric, population){
     df %>% 
         ggplot(aes(x = Date)) +
         labs(title = str_c(metric, " Among ", population, "\n", fac_name)) +
-        scale_x_date(date_labels = "%b %Y", limits = c(as.Date("2020-03-01"), Sys.Date())) + 
         customTheme
 }
 
